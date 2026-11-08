@@ -50,11 +50,63 @@ That is a claim someone can disagree with and check. "125 ns" is not.
   Percentiles need confidence intervals, and the interesting ones (p99.99)
   need more samples than people usually collect.
 
+## First result: the harness, on a machine that cannot be trusted
+
+Milestone 0 is built. Running it on the development container — a shared cloud
+VM, deliberately the worst case:
+
+```
+rdtscp                              median 20.00 ns   p99 26.09 ns   resolution 18.26 ns
+clock_gettime(MONOTONIC)            median 21.00 ns   p99 29.00 ns   resolution 19.00 ns
+chrono::steady_clock                median 21.00 ns   p99 28.00 ns   resolution 19.00 ns
+
+noise floor   median 20.00 ns   p99 20.00 ns   p99.9 20.87 ns   max 23878.25 ns
+
+VERDICT: UNSUITABLE
+  - running under a hypervisor: the timestamp counter may be virtualised
+  - no isolated cores: the scheduler may place other work on the measured core
+  - no nohz_full: the periodic timer tick interrupts the measured core
+  - perf_event_paranoid > 1: hardware counters unavailable
+```
+
+Three things fall straight out of that, and they are the whole argument:
+
+**The instrument costs 20 ns and resolves to 18 ns.** A published "p50 125 ns"
+is a figure in which a sixth is the timer and the quantisation is a seventh of
+the signal. Not wrong, exactly — unknowable, because the correction was never
+measured or stated.
+
+**The noise floor's median is 20 ns and its maximum is 23,878 ns.** A spread of
+1200x on an idle machine doing nothing at all. Any benchmark reporting a *mean*
+is reporting something that spike dominates.
+
+**Quoting p99.99 to ±1% needs 1.54 billion samples.** Each additional nine
+costs ten times the samples, because what bounds a tail percentile is how many
+observations lie beyond it. The harness computes this requirement and prints
+it, so a run that was too short is visible rather than assumed adequate.
+
+The report exits non-zero on `UNSUITABLE`, so CI cannot accidentally publish a
+number from a machine like this one.
+
 ## Status
 
-Specification complete, implementation not started. See **[SPEC.md](SPEC.md)**
-for the full build plan, milestone acceptance criteria and measurement
-methodology, and **[CLAUDE.md](CLAUDE.md)** if you are an agent picking this up.
+| milestone | state |
+|---|---|
+| **M0 — measurement harness** | **done** · 18 tests, 1223 assertions |
+| M1 — ITCH 5.0 parser | not started |
+| M2 — order book, three implementations | not started |
+| M3 — matching engine | not started |
+| M4 — the measurement | not started |
+| M5 — third-party comparison | not started |
+
+See **[SPEC.md](SPEC.md)** for the build plan, milestone acceptance criteria
+and the measurement methodology in full, and **[CLAUDE.md](CLAUDE.md)** if you
+are an agent picking this up.
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j
+./build/unit_tests && ./build/env_report
+```
 
 ## License
 
