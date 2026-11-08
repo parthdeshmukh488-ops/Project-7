@@ -1,0 +1,13 @@
+build/
+.cache/
+compile_commands.json
+
+# ITCH days are 15-25 GB uncompressed. Only the CI slice is committed.
+data/*
+!data/sample/
+!data/.gitignore
+
+*.o
+*.a
+*.so
+.DS_Store
